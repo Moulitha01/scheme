@@ -1,57 +1,43 @@
-# ingest.py
 import os
+import faiss
+import pickle
+from sentence_transformers import SentenceTransformer
+from PyPDF2 import PdfReader
 
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-DATA_PATH = "data/schemes"
-INDEX_PATH = "faiss_index"
+# Folder containing PDFs
+pdf_folder = "./data/schemes"  # adjust if needed
 
-def ingest():
+# 1️⃣ Load PDFs and split into text chunks
+chunks = []
+for filename in os.listdir(pdf_folder):
+    if filename.endswith(".pdf"):
+        reader = PdfReader(os.path.join(pdf_folder, filename))
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                chunks.append(text)
 
-    if not os.path.exists(DATA_PATH):
-        print("❌ data/schemes folder not found.")
-        return
+print(f"Loaded {len(chunks)} text chunks from PDFs.")
 
-    documents = []
+# 2️⃣ Load embedding model
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-    print("📂 Loading PDFs...")
+# 3️⃣ Create embeddings for all chunks
+embeddings = model.encode(chunks, show_progress_bar=True)
 
-    for file in os.listdir(DATA_PATH):
-        if file.endswith(".pdf"):
-            file_path = os.path.join(DATA_PATH, file)
-            print(f"   → Reading {file}")
-            loader = PyPDFLoader(file_path)
-            documents.extend(loader.load())
+# 4️⃣ Build FAISS index
+dimension = embeddings.shape[1]
+index = faiss.IndexFlatL2(dimension)
+index.add(embeddings)
 
-    if not documents:
-        print("❌ No PDF documents found.")
-        return
+# 5️⃣ Save FAISS index
+if not os.path.exists("faiss_index"):
+    os.mkdir("faiss_index")
+faiss.write_index(index, "faiss_index/index.faiss")
 
-    print("✂️ Splitting documents into chunks...")
+# 6️⃣ Save mapping: FAISS vector id -> text chunk
+# Using simple list where id = index in list
+with open("faiss_index/doc_mapping.pkl", "wb") as f:
+    pickle.dump(chunks, f)
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=100
-    )
-
-    docs = text_splitter.split_documents(documents)
-
-    print("🧠 Loading embedding model (first time takes ~1 minute)...")
-
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
-
-    print("📦 Creating FAISS vector store...")
-
-    vectorstore = FAISS.from_documents(docs, embeddings)
-
-    vectorstore.save_local(INDEX_PATH)
-
-    print("✅ Index built successfully!")
-    print(f"📁 Saved at: {INDEX_PATH}")
-
-if __name__ == "__main__":
-    ingest()
+print("FAISS index and doc mapping saved successfully!")

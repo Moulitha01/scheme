@@ -1,14 +1,29 @@
-from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+import faiss
+import pickle
+from sentence_transformers import SentenceTransformer
 
-# 1. Load embeddings and FAISS index
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-faiss_index = FAISS.load_local("faiss_index", embeddings)
+# Load your FAISS index
+index = faiss.read_index("faiss_index/index.faiss")  # adjust path if needed
 
-# 2. Query the index
-query = input("Enter your question about schemes: ")
-results = faiss_index.similarity_search(query, k=3)
+# Load embeddings model
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-for i, doc in enumerate(results):
-    print(f"\n--- Result {i+1} ---\n")
-    print(doc.page_content)
+# Load the mapping of chunk IDs to text
+with open("faiss_index/doc_mapping.pkl", "rb") as f:
+    doc_mapping = pickle.load(f)
+
+# Query function
+def semantic_search(query, k=3):
+    query_vec = model.encode([query])
+    distances, indices = index.search(query_vec, k)
+    results = [doc_mapping[i] for i in indices[0]]
+    return results
+
+# Interactive query
+while True:
+    q = input("Enter your question (or 'exit' to quit): ")
+    if q.lower() == "exit":
+        break
+    answers = semantic_search(q)
+    for i, ans in enumerate(answers):
+        print(f"\n--- Result {i+1} ---\n{ans}")
