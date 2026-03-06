@@ -23,12 +23,18 @@ for filename in os.listdir(pdf_folder):
 
             if text:
 
-                documents.append(
-                    Document(
-                        page_content=text,
-                        metadata={"source": filename}
-                    )
-                )
+                chunk_size = 500
+chunk_overlap = 100
+
+for i in range(0, len(text), chunk_size - chunk_overlap):
+    chunk = text[i:i + chunk_size]
+
+    documents.append(
+        Document(
+            page_content=chunk,
+            metadata={"source": filename}
+        )
+    )
 
 print("Total documents loaded:", len(documents))
 

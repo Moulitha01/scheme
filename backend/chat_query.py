@@ -1,18 +1,17 @@
 import sys
 import os
+import re
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-import faiss
-import pickle
-import re
-from sentence_transformers import SentenceTransformer
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
 from agents.eligibility_engine import check_eligibility
 from agents.rag_engine import ask_scheme_sathi
+
+
 # -----------------------------
-# Scheme metadata (for recommendation)
+# Scheme metadata (recommendation)
 # -----------------------------
-schemes = {
+scheme_metadata = {
     "PM-Kisan": {
         "target": ["farmer"],
         "benefit": "₹6000 per year income support"
@@ -35,24 +34,6 @@ schemes = {
     }
 }
 
-# -----------------------------
-# Load FAISS index
-# -----------------------------
-index = faiss.read_index("faiss_index/index.faiss")
-
-with open("faiss_index/doc_mapping.pkl", "rb") as f:
-    doc_mapping = pickle.load(f)
-
-# -----------------------------
-# Load embedding model
-# -----------------------------
-embed_model = SentenceTransformer("all-MiniLM-L6-v2")
-
-# -----------------------------
-# Load LLM
-# -----------------------------
-tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
-llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-base")
 
 # -----------------------------
 # Detect user profile
@@ -88,11 +69,11 @@ def recommend_schemes(profile):
 
     recommendations = []
 
-    for scheme, info in schemes.items():
+    for scheme, info in scheme_metadata.items():
 
         if profile["occupation"]:
-
             for target in info["target"]:
+
                 if profile["occupation"] in target or target in profile["occupation"]:
                     recommendations.append(f"{scheme} - {info['benefit']}")
 
@@ -100,78 +81,7 @@ def recommend_schemes(profile):
 
 
 # -----------------------------
-# Semantic search
-# -----------------------------
-def semantic_search(query, k=3):
-
-    query_vec = embed_model.encode([query])
-    distances, indices = index.search(query_vec, k)
-
-    results = []
-
-    for i in indices[0]:
-        results.append(doc_mapping[i])
-
-    return results
-
-
-# -----------------------------
-# Generate grounded answer
-# -----------------------------
-def generate_answer(context_chunks, question):
-
-    context = "\n\n".join(
-    f"Scheme: {scheme}\n{text}" for scheme, text in context_chunks
-    )
-
-    prompt = f"""
-You are an assistant that explains Indian government schemes.
-
-Use ONLY the information from the context below.
-If the answer is not present, say "Information not found.
-
-If multiple schemes appear, return only the scheme that best answers the question.
-
-Answer in this format:
-
-Scheme: <scheme name>
-
-What it provides:
-<short explanation>
-
-Eligibility:
-<who can apply>
-
-Context:
-{context}
-
-Question:
-{question}
-
-Answer:
-"""
-
-    inputs = tokenizer(
-        prompt,
-        return_tensors="pt",
-        truncation=True,
-        max_length=512
-    )
-
-    outputs = llm_model.generate(
-        **inputs,
-        max_new_tokens=120,
-        num_beams=4,
-        do_sample=False
-    )
-
-    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-    return answer
-
-
-# -----------------------------
-# Chat loop
+# Chat Loop
 # -----------------------------
 print("\n=== Scheme Assistant ===")
 print("Ask about government schemes.")
@@ -184,41 +94,37 @@ while True:
     if user_query.lower() == "exit":
         break
 
-    # Step 1: check eligibility rules
-    schemes = check_eligibility(user_query)
+    # Step 1: Rule-based eligibility
+    matched_schemes = check_eligibility(user_query)
 
-    if schemes:
+    if matched_schemes:
+
         print("\nBot:\n")
-        for scheme in schemes:
+
+        for scheme in matched_schemes:
             print(f"• {scheme['name']} - {scheme['description']}")
+
         print()
 
     else:
-        # Step 2: use RAG for scheme questions
+        # Step 2: RAG-based answer
         result = ask_scheme_sathi(user_query)
 
         print("\nBot:", result["answer"], "\n")
 
-    # Detect user profile
+    # Step 3: Detect profile
     profile = detect_profile(user_query)
 
-    # Recommendation mode
+    # Step 4: Recommend schemes
     if profile["occupation"] or profile["age"]:
 
         recs = recommend_schemes(profile)
 
         if recs:
-            print("\nBot:\n")
+
+            print("\nRecommended Schemes:\n")
 
             for r in recs:
                 print("•", r)
 
             print()
-            continue
-
-    # Normal RAG QA
-    chunks = semantic_search(user_query, k=5)
-
-    answer = generate_answer(chunks, user_query)
-
-    print("\nBot:", answer, "\n")
