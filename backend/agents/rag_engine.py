@@ -32,7 +32,7 @@ def load_rag_pipeline():
     # 3️⃣ Retriever configuration
     retriever = vector_db.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": 4}
+        search_kwargs={"k": 6}
     )
 
     # 4️⃣ Load local LLM from Ollama
