@@ -115,13 +115,27 @@ def semantic_search(query, k=3):
 # -----------------------------
 def generate_answer(context_chunks, question):
 
-    context = "\n\n".join(context_chunks)
+    context = "\n\n".join(
+    f"Scheme: {scheme}\n{text}" for scheme, text in context_chunks
+    )
 
     prompt = f"""
-You are an assistant that answers questions about Indian government schemes.
+You are an assistant that explains Indian government schemes.
 
 Use ONLY the information from the context below.
-If the answer is not present, say "Information not found".
+If the answer is not present, say "Information not found.
+
+If multiple schemes appear, return only the scheme that best answers the question.
+
+Answer in this format:
+
+Scheme: <scheme name>
+
+What it provides:
+<short explanation>
+
+Eligibility:
+<who can apply>
 
 Context:
 {context}
@@ -129,7 +143,7 @@ Context:
 Question:
 {question}
 
-Answer clearly:
+Answer:
 """
 
     inputs = tokenizer(
@@ -141,7 +155,7 @@ Answer clearly:
 
     outputs = llm_model.generate(
         **inputs,
-        max_new_tokens=200,
+        max_new_tokens=120,
         num_beams=4,
         do_sample=False
     )
@@ -174,7 +188,7 @@ while True:
         recs = recommend_schemes(profile)
 
         if recs:
-            print("\nBot: Based on your profile you may be eligible for:\n")
+            print("\nBot:\n")
 
             for r in recs:
                 print("•", r)
@@ -183,7 +197,7 @@ while True:
             continue
 
     # Normal RAG QA
-    chunks = semantic_search(user_query, k=3)
+    chunks = semantic_search(user_query, k=5)
 
     answer = generate_answer(chunks, user_query)
 
