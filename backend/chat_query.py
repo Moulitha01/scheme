@@ -1,75 +1,190 @@
 import faiss
 import pickle
+import re
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 # -----------------------------
-# 1️⃣ Load FAISS index and mapping
+# Scheme metadata (for recommendation)
+# -----------------------------
+schemes = {
+    "PM-Kisan": {
+        "target": ["farmer"],
+        "benefit": "₹6000 per year income support"
+    },
+    "PMAY": {
+        "target": ["low income", "housing"],
+        "benefit": "subsidy for house construction"
+    },
+    "Ayushman Bharat": {
+        "target": ["poor", "low income"],
+        "benefit": "₹5 lakh health insurance coverage"
+    },
+    "Skill India": {
+        "target": ["student", "youth"],
+        "benefit": "free skill development training"
+    },
+    "National Scholarship Portal": {
+        "target": ["student"],
+        "benefit": "government scholarships for education"
+    }
+}
+
+# -----------------------------
+# Load FAISS index
 # -----------------------------
 index = faiss.read_index("faiss_index/index.faiss")
+
 with open("faiss_index/doc_mapping.pkl", "rb") as f:
     doc_mapping = pickle.load(f)
 
-# Ensure each chunk has a scheme name: ("scheme_name", "chunk_text")
-# Adjust this to match your PDFs
-if isinstance(doc_mapping[0], str):
-    scheme_names = ["PM-Kisan", "PMAY", "Ayushman Bharat"]
-    doc_mapping = [(scheme_names[i], doc_mapping[i]) for i in range(len(doc_mapping))]
+# -----------------------------
+# Load embedding model
+# -----------------------------
+embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # -----------------------------
-# 2️⃣ Load embeddings model
+# Load LLM
 # -----------------------------
-embed_model = SentenceTransformer('all-MiniLM-L6-v2')
-
-# -----------------------------
-# 3️⃣ Load LLM for summarization
-# -----------------------------
-tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")  # stronger than small
+tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
 llm_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-base")
 
 # -----------------------------
-# 4️⃣ Semantic search function
+# Detect user profile
+# -----------------------------
+def detect_profile(text):
+
+    profile = {
+        "age": None,
+        "gender": None,
+        "occupation": None
+    }
+
+    age_match = re.search(r"\b(\d{1,2})\b", text)
+    if age_match:
+        profile["age"] = int(age_match.group(1))
+
+    if "girl" in text or "female" in text or "woman" in text:
+        profile["gender"] = "female"
+
+    if "student" in text or "college" in text:
+        profile["occupation"] = "student"
+
+    if "farmer" in text:
+        profile["occupation"] = "farmer"
+
+    return profile
+
+
+# -----------------------------
+# Recommend schemes
+# -----------------------------
+def recommend_schemes(profile):
+
+    recommendations = []
+
+    for scheme, info in schemes.items():
+
+        if profile["occupation"]:
+
+            for target in info["target"]:
+                if profile["occupation"] in target or target in profile["occupation"]:
+                    recommendations.append(f"{scheme} - {info['benefit']}")
+
+    return recommendations
+
+
+# -----------------------------
+# Semantic search
 # -----------------------------
 def semantic_search(query, k=3):
+
     query_vec = embed_model.encode([query])
     distances, indices = index.search(query_vec, k)
-    results = [doc_mapping[i] for i in indices[0]]
+
+    results = []
+
+    for i in indices[0]:
+        results.append(doc_mapping[i])
+
     return results
 
-# -----------------------------
-# 5️⃣ Summarize a single chunk
-# -----------------------------
-def summarize_chunk(chunk_text, scheme_name, query):
-    input_text = f"Scheme: {scheme_name}\nQuestion: {query}\nText: {chunk_text}\nAnswer concisely:"
-    inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=512)
-    outputs = llm_model.generate(**inputs, max_new_tokens=150)
-    summary = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return f"{scheme_name}: {summary}"
 
 # -----------------------------
-# 6️⃣ Generate final answer
+# Generate grounded answer
 # -----------------------------
-def generate_answer(chunks, query):
-    # Summarize each chunk individually
-    summaries = [summarize_chunk(text, scheme, query) for scheme, text in chunks]
-    # Combine summaries into final answer
-    combined_text = " ".join(summaries)
-    input_text = f"Answer the question based on the following summaries:\nQuestion: {query}\nText: {combined_text}\nAnswer concisely:"
-    inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=512)
-    outputs = llm_model.generate(**inputs, max_new_tokens=200)
-    final_answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return final_answer
+def generate_answer(context_chunks, question):
+
+    context = "\n\n".join(context_chunks)
+
+    prompt = f"""
+You are an assistant that answers questions about Indian government schemes.
+
+Use ONLY the information from the context below.
+If the answer is not present, say "Information not found".
+
+Context:
+{context}
+
+Question:
+{question}
+
+Answer clearly:
+"""
+
+    inputs = tokenizer(
+        prompt,
+        return_tensors="pt",
+        truncation=True,
+        max_length=512
+    )
+
+    outputs = llm_model.generate(
+        **inputs,
+        max_new_tokens=200,
+        num_beams=4,
+        do_sample=False
+    )
+
+    answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+    return answer
+
 
 # -----------------------------
-# 7️⃣ Chat loop
+# Chat loop
 # -----------------------------
-print("=== Chat with your schemes index ===")
+print("\n=== Scheme Assistant ===")
+print("Ask about government schemes.")
 print("Type 'exit' to quit.\n")
 
 while True:
+
     user_query = input("You: ")
+
     if user_query.lower() == "exit":
         break
-    top_chunks = semantic_search(user_query, k=3)
-    answer = generate_answer(top_chunks, user_query)
-    print(f"\nBot: {answer}\n")
+
+    # Detect user profile
+    profile = detect_profile(user_query)
+
+    # Recommendation mode
+    if profile["occupation"] or profile["age"]:
+
+        recs = recommend_schemes(profile)
+
+        if recs:
+            print("\nBot: Based on your profile you may be eligible for:\n")
+
+            for r in recs:
+                print("•", r)
+
+            print()
+            continue
+
+    # Normal RAG QA
+    chunks = semantic_search(user_query, k=3)
+
+    answer = generate_answer(chunks, user_query)
+
+    print("\nBot:", answer, "\n")
