@@ -31,6 +31,12 @@ SCHEME_RULES = [
 },
 
 {
+"name": "Beti Bachao Beti Padhao",
+"description": "support for education of girls",
+"conditions": ["girl"]
+},
+
+{
 "name": "National Scholarship Portal",
 "description": "government education scholarships",
 "conditions": ["student"]

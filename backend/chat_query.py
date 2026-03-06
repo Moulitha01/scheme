@@ -1,9 +1,14 @@
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import faiss
 import pickle
 import re
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-
+from agents.eligibility_engine import check_eligibility
+from agents.rag_engine import ask_scheme_sathi
 # -----------------------------
 # Scheme metadata (for recommendation)
 # -----------------------------
@@ -178,6 +183,21 @@ while True:
 
     if user_query.lower() == "exit":
         break
+
+    # Step 1: check eligibility rules
+    schemes = check_eligibility(user_query)
+
+    if schemes:
+        print("\nBot:\n")
+        for scheme in schemes:
+            print(f"• {scheme['name']} - {scheme['description']}")
+        print()
+
+    else:
+        # Step 2: use RAG for scheme questions
+        result = ask_scheme_sathi(user_query)
+
+        print("\nBot:", result["answer"], "\n")
 
     # Detect user profile
     profile = detect_profile(user_query)
