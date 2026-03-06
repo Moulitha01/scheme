@@ -4,40 +4,89 @@ import pickle
 from sentence_transformers import SentenceTransformer
 from PyPDF2 import PdfReader
 
-# Folder containing PDFs
-pdf_folder = "./data/schemes"  # adjust if needed
+# -----------------------------
+# 1️⃣ Folder containing scheme PDFs
+# -----------------------------
+PDF_FOLDER = "./data/schemes"
 
-# 1️⃣ Load PDFs and split into text chunks
-chunks = []
-for filename in os.listdir(pdf_folder):
-    if filename.endswith(".pdf"):
-        reader = PdfReader(os.path.join(pdf_folder, filename))
+# -----------------------------
+# 2️⃣ Function to split text into chunks
+# -----------------------------
+def split_text(text, chunk_size=400):
+
+    words = text.split()
+    chunks = []
+
+    for i in range(0, len(words), chunk_size):
+        chunk = " ".join(words[i:i + chunk_size])
+        chunks.append(chunk)
+
+    return chunks
+
+
+# -----------------------------
+# 3️⃣ Extract text from PDFs
+# -----------------------------
+documents = []
+
+for file in os.listdir(PDF_FOLDER):
+
+    if file.endswith(".pdf"):
+
+        scheme_name = file.replace(".pdf", "").replace("_", " ")
+
+        pdf_path = os.path.join(PDF_FOLDER, file)
+
+        reader = PdfReader(pdf_path)
+
+        full_text = ""
+
         for page in reader.pages:
             text = page.extract_text()
             if text:
-                chunks.append(text)
+                full_text += text + " "
 
-print(f"Loaded {len(chunks)} text chunks from PDFs.")
+        chunks = split_text(full_text)
 
-# 2️⃣ Load embedding model
-model = SentenceTransformer('all-MiniLM-L6-v2')
+        for chunk in chunks:
+            documents.append((scheme_name, chunk))
 
-# 3️⃣ Create embeddings for all chunks
-embeddings = model.encode(chunks, show_progress_bar=True)
 
-# 4️⃣ Build FAISS index
+print(f"Loaded {len(documents)} chunks from scheme PDFs")
+
+# -----------------------------
+# 4️⃣ Load embedding model
+# -----------------------------
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
+texts = [doc[1] for doc in documents]
+
+# -----------------------------
+# 5️⃣ Generate embeddings
+# -----------------------------
+embeddings = model.encode(texts, show_progress_bar=True)
+
+# -----------------------------
+# 6️⃣ Build FAISS index
+# -----------------------------
 dimension = embeddings.shape[1]
+
 index = faiss.IndexFlatL2(dimension)
+
 index.add(embeddings)
 
-# 5️⃣ Save FAISS index
-if not os.path.exists("faiss_index"):
-    os.mkdir("faiss_index")
+# -----------------------------
+# 7️⃣ Save FAISS index
+# -----------------------------
+os.makedirs("faiss_index", exist_ok=True)
+
 faiss.write_index(index, "faiss_index/index.faiss")
 
-# 6️⃣ Save mapping: FAISS vector id -> text chunk
-# Using simple list where id = index in list
+# -----------------------------
+# 8️⃣ Save mapping
+# -----------------------------
 with open("faiss_index/doc_mapping.pkl", "wb") as f:
-    pickle.dump(chunks, f)
+    pickle.dump(documents, f)
 
-print("FAISS index and doc mapping saved successfully!")
+print("FAISS index created successfully")
+print(f"Total vectors stored: {len(documents)}")

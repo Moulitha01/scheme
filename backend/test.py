@@ -1,4 +1,4 @@
-from rag_engine import ask_scheme_sathi
+from scheme.backend.engines.rag_engine import ask_scheme_sathi
 
 while True:
     query = input("Ask about schemes: ")
