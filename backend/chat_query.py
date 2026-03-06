@@ -66,10 +66,3 @@ def generate_answer(chunks, query):
 print("=== Chat with your schemes index ===")
 print("Type 'exit' to quit.\n")
 
-while True:
-    user_query = input("You: ")
-    if user_query.lower() == "exit":
-        break
-    top_chunks = semantic_search(user_query, k=3)
-    answer = generate_answer(top_chunks, user_query)
-    print(f"\nBot: {answer}\n")
