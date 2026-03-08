@@ -69,17 +69,23 @@ def recommend_schemes(profile):
 
     recommendations = []
 
-    for scheme, info in scheme_metadata.items():
+    # Age based recommendations
+    if profile["age"] and profile["age"] <= 25:
+        recommendations.append("Skill India - free skill development training")
+        recommendations.append("National Scholarship Portal - government education scholarships")
 
-        if profile["occupation"]:
-            for target in info["target"]:
+    # Gender based
+    if profile["gender"] == "female":
+        recommendations.append("Beti Bachao Beti Padhao - support for education of girls")
 
-                if profile["occupation"] in target or target in profile["occupation"]:
-                    recommendations.append(f"{scheme} - {info['benefit']}")
+    # Occupation based
+    if profile["occupation"] == "student":
+        recommendations.append("National Scholarship Portal - scholarships for students")
+
+    if profile["occupation"] == "farmer":
+        recommendations.append("PM-Kisan - ₹6000 per year income support")
 
     return recommendations
-
-
 # -----------------------------
 # Chat Loop
 # -----------------------------
