@@ -4,7 +4,7 @@ def extract_user_profile(text):
         "student": False,
         "low_income": False,
         "no_house": False,
-        "female_child:False
+        "female_child":False
     }
 
     text = text.lower()
