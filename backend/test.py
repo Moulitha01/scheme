@@ -1,10 +1,7 @@
-from scheme.backend.agents.rag_engine import ask_scheme_sathi
+import fitz
 
-while True:
-    query = input("Ask about schemes: ")
+pdf = fitz.open("data/schemes/PM_Kisan_Scheme.pdf")
 
-    response = ask_scheme_sathi(query)
-
-    print("\nAnswer:\n")
-    print(response["answer"])
-    print("\n")
+for page in pdf:
+    text = page.get_text()
+    print(len(text))
