@@ -85,6 +85,10 @@ def recommend_schemes(profile):
     if profile["occupation"] == "farmer":
         recommendations.append("PM-Kisan - ₹6000 per year income support")
 
+    if profile["age"] and profile["age"] >= 60:
+        recommendations.append("Indira Gandhi National Old Age Pension Scheme - pension support for senior citizens")
+        recommendations.append("Pradhan Mantri Vaya Vandana Yojana - pension scheme for elderly citizens")
+
     return recommendations
 # -----------------------------
 # Chat Loop

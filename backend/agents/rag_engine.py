@@ -4,7 +4,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.llms import Ollama
 
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
@@ -12,62 +12,66 @@ from langchain_core.runnables import RunnablePassthrough
 DB_PATH = "faiss_index"
 
 
-# -----------------------------
+# ----------------------------------
 # Load RAG Pipeline
-# -----------------------------
+# ----------------------------------
 def load_rag_pipeline():
 
-    # 1️⃣ Load embedding model
+    # 1. Load embedding model
     embeddings = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
-    # 2️⃣ Load FAISS vector database
+    # 2. Load FAISS vector database
     vector_db = FAISS.load_local(
         DB_PATH,
         embeddings,
         allow_dangerous_deserialization=True
     )
 
-    # 3️⃣ Retriever configuration
+    # 3. Retriever configuration
     retriever = vector_db.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 10}
     )
 
-    # 4️⃣ Load local LLM from Ollama
+    # 4. Load local LLM (Ollama)
     llm = Ollama(
         model="llama3.1",
         temperature=0.2
     )
 
-    # 5️⃣ Prompt template
-    prompt = ChatPromptTemplate.from_template(
-        """
-You are Scheme-Sathi, an AI assistant that helps people understand Indian government schemes.
+    # 5. Prompt template
+    prompt_template = """
+You are an assistant that helps users understand Indian government schemes.
 
-Use ONLY the information from the context.
+Use the context below to answer the user's question.
 
-If the answer is not present in the context, say:
-"I could not find that information in the scheme documents."
+Rules:
+- Suggest relevant schemes if possible
+- Explain briefly
+- If eligibility is mentioned, include it
+- If the scheme is not relevant, ignore it
 
-Explain clearly and simply.
+User Question:
+{question}
 
 Context:
 {context}
 
-Question:
-{question}
-
 Answer:
 """
+
+    prompt = PromptTemplate(
+        template=prompt_template,
+        input_variables=["context", "question"]
     )
 
-    # 6️⃣ Format retrieved docs
+    # 6. Format retrieved documents
     def format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
 
-    # 7️⃣ Build RAG chain
+    # 7. Build RAG chain
     rag_chain = (
         {
             "context": retriever | format_docs,
@@ -81,15 +85,15 @@ Answer:
     return rag_chain
 
 
-# -----------------------------
+# ----------------------------------
 # Load pipeline once
-# -----------------------------
+# ----------------------------------
 rag_chain = load_rag_pipeline()
 
 
-# -----------------------------
+# ----------------------------------
 # Query function
-# -----------------------------
+# ----------------------------------
 def ask_scheme_sathi(question):
 
     try:
@@ -101,8 +105,5 @@ def ask_scheme_sathi(question):
         }
 
     except Exception as e:
-
-        return {
-            "question": question,
-            "answer": "Sorry, something went wrong while processing the request."
-        }
+        print("RAG ERROR:", e)
+        return {"answer": "Error occurred. Check terminal."}
