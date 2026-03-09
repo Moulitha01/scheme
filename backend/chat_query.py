@@ -75,7 +75,7 @@ def recommend_schemes(profile):
         recommendations.append("National Scholarship Portal - government education scholarships")
 
     # Gender based
-    if profile["gender"] == "female":
+    if profile["gender"] == "female" and profile["age"] and profile["age"] <= 25:
         recommendations.append("Beti Bachao Beti Padhao - support for education of girls")
 
     # Occupation based

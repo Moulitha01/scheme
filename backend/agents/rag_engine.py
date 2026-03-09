@@ -38,22 +38,25 @@ def load_rag_pipeline():
     # 4. Load local LLM (Ollama)
     llm = Ollama(
         model="llama3.1",
-        temperature=0.2
+        temperature=0.2,
+        num_predict=120
     )
 
     # 5. Prompt template
     prompt_template = """
-You are an assistant that helps users understand Indian government schemes.
+You are a government schemes assistant.
 
-Use the context below to answer the user's question.
+Using the context, recommend relevant schemes.
 
 Rules:
-- Suggest relevant schemes if possible
-- Explain briefly
-- If eligibility is mentioned, include it
-- If the scheme is not relevant, ignore it
+- Suggest schemes only if the eligibility roughly matches the user's profile.
+- Do NOT recommend schemes if the eligibility contradicts the user's age.
+- Answer in **maximum 3 bullet points**
+- Each bullet should contain: Scheme name + short benefit
+- Keep the answer under **80 words**
+- Do not explain unnecessary details
 
-User Question:
+Question:
 {question}
 
 Context:
