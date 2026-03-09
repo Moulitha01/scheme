@@ -104,6 +104,47 @@ while True:
     if user_query.lower() == "exit":
         break
 
+    # -----------------------------
+    # Step 1: Detect user profile
+    # -----------------------------
+    profile = detect_profile(user_query)
+
+    if profile["age"] or profile["occupation"] or profile["gender"]:
+
+        recs = recommend_schemes(profile)
+
+        if recs:
+            print("\nBot:\n")
+
+            for r in recs:
+                print("•", r)
+
+            print()
+            continue
+
+
+    # -----------------------------
+    # Step 2: Rule-based eligibility
+    # -----------------------------
+    matched_schemes = check_eligibility(user_query)
+
+    if matched_schemes:
+
+        print("\nBot:\n")
+
+        for scheme in matched_schemes:
+            print(f"• {scheme['name']} - {scheme['description']}")
+
+        print()
+
+    else:
+        # -----------------------------
+        # Step 3: RAG answer
+        # -----------------------------
+        result = ask_scheme_sathi(user_query)
+
+        print("\nBot:", result["answer"], "\n")
+
     # Step 1: Rule-based eligibility
     matched_schemes = check_eligibility(user_query)
 
