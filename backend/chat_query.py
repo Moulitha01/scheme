@@ -104,9 +104,7 @@ while True:
     if user_query.lower() == "exit":
         break
 
-    # -----------------------------
-    # Step 1: Detect user profile
-    # -----------------------------
+    # Detect profile
     profile = detect_profile(user_query)
 
     if profile["age"] or profile["occupation"] or profile["gender"]:
@@ -123,9 +121,7 @@ while True:
             continue
 
 
-    # -----------------------------
-    # Step 2: Rule-based eligibility
-    # -----------------------------
+    # Rule based eligibility
     matched_schemes = check_eligibility(user_query)
 
     if matched_schemes:
@@ -136,32 +132,13 @@ while True:
             print(f"• {scheme['name']} - {scheme['description']}")
 
         print()
+        continue
 
-    else:
-        # -----------------------------
-        # Step 3: RAG answer
-        # -----------------------------
-        result = ask_scheme_sathi(user_query)
 
-        print("\nBot:", result["answer"], "\n")
+    # RAG answer
+    result = ask_scheme_sathi(user_query)
 
-    # Step 1: Rule-based eligibility
-    matched_schemes = check_eligibility(user_query)
-
-    if matched_schemes:
-
-        print("\nBot:\n")
-
-        for scheme in matched_schemes:
-            print(f"• {scheme['name']} - {scheme['description']}")
-
-        print()
-
-    else:
-        # Step 2: RAG-based answer
-        result = ask_scheme_sathi(user_query)
-
-        print("\nBot:", result["answer"], "\n")
+    print("\nBot:", result["answer"], "\n")
 
     # Step 3: Detect profile
     profile = detect_profile(user_query)

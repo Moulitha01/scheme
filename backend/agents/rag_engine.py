@@ -55,6 +55,9 @@ Rules:
 - Each bullet should contain: Scheme name + short benefit
 - Keep the answer under **80 words**
 - Do not explain unnecessary details
+- If the question asks about a specific scheme, explain it.
+- Do not recommend unrelated schemes.
+- Keep the answer short.
 
 Question:
 {question}
