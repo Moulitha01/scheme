@@ -101,25 +101,23 @@ while True:
 
     user_query = input("You: ")
 
-    if user_query.lower() == "exit":
+    if user_query.lower() in ["exit", "quit"]:
         break
 
-    # Detect profile
+    # STEP 1: detect profile
     profile = detect_profile(user_query)
 
+    # STEP 2: if profile info exists → recommend schemes
     if profile["age"] or profile["occupation"] or profile["gender"]:
 
         recs = recommend_schemes(profile)
 
         if recs:
             print("\nBot:\n")
-
             for r in recs:
                 print("•", r)
 
-            print()
-            continue
-
+            continue   # IMPORTANT: stops FAISS search
 
     # Rule based eligibility
     matched_schemes = check_eligibility(user_query)
