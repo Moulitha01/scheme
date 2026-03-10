@@ -113,7 +113,7 @@ while True:
         recs = recommend_schemes(profile)
 
         if recs:
-            print("\naganet:\n")
+            print("\nBot:\n")
             for r in recs:
                 print("•", r)
 
