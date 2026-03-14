@@ -2,7 +2,7 @@ import os
 
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -35,8 +35,8 @@ def load_rag_pipeline():
         search_kwargs={"k": 2}
     )
 
-    # 4. Load local LLM (Ollama)
-    llm = Ollama(
+    # 4. Load local LLM
+    llm = OllamaLLM(
         model="tinyllama",
         temperature=0.2,
         num_predict=120
@@ -44,41 +44,41 @@ def load_rag_pipeline():
 
     # 5. Prompt template
     prompt_template = """
-    You are an AI assistant that helps citizens understand Indian government schemes.
+You are an AI assistant that explains Indian government schemes.
 
-    Use ONLY the provided context to answer.
+Use the information below to answer the user's question.
 
-    Rules:
-    - Maximum 3 bullet points
-    - Each bullet: Scheme name + benefit
-    - Maximum 80 words total
-    - Do NOT write paragraphs
-    - Do NOT include unrelated schemes
-    - If the user asks about a specific scheme, explain only that scheme
+{context}
 
-    Response format:
+Question: {question}
 
-    • Bullet 1  
-    • Bullet 2  
-    • Bullet 3  
-
-    Question:
-    {question}
-
-    Context:
-    {context}
-
-    Answer:
-    """
+Answer in maximum 3 bullet points under 80 words.
+Do not repeat the text above.
+"""
 
     prompt = PromptTemplate(
         template=prompt_template,
         input_variables=["context", "question"]
     )
 
-    # 6. Format retrieved documents
+    # 6. Clean retrieved documents
     def format_docs(docs):
-        return "\n\n".join(doc.page_content for doc in docs)
+
+        cleaned = []
+
+        for doc in docs:
+            text = doc.page_content
+
+            if "National Informatics Centre" in text:
+                continue
+            if "Access to information" in text:
+                continue
+            if "India Portal" in text:
+                continue
+
+            cleaned.append(text)
+
+        return "\n\n".join(cleaned)
 
     # 7. Build RAG chain
     rag_chain = (
