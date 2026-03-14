@@ -32,7 +32,7 @@ def load_rag_pipeline():
     # 3. Retriever configuration
     retriever = vector_db.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": 10}
+        search_kwargs={"k": 2}
     )
 
     # 4. Load local LLM (Ollama)
@@ -44,29 +44,32 @@ def load_rag_pipeline():
 
     # 5. Prompt template
     prompt_template = """
-You are a government schemes assistant.
+    You are an AI assistant that helps citizens understand Indian government schemes.
 
-Using the context, recommend relevant schemes.
+    Use ONLY the provided context to answer.
 
-Rules:
-- Suggest schemes only if the eligibility roughly matches the user's profile.
-- Do NOT recommend schemes if the eligibility contradicts the user's age.
-- Answer in **maximum 3 bullet points**
-- Each bullet should contain: Scheme name + short benefit
-- Keep the answer under **80 words**
-- Do not explain unnecessary details
-- If the question asks about a specific scheme, explain it.
-- Do not recommend unrelated schemes.
-- Keep the answer short.
+    Rules:
+    - Maximum 3 bullet points
+    - Each bullet: Scheme name + benefit
+    - Maximum 80 words total
+    - Do NOT write paragraphs
+    - Do NOT include unrelated schemes
+    - If the user asks about a specific scheme, explain only that scheme
 
-Question:
-{question}
+    Response format:
 
-Context:
-{context}
+    • Bullet 1  
+    • Bullet 2  
+    • Bullet 3  
 
-Answer:
-"""
+    Question:
+    {question}
+
+    Context:
+    {context}
+
+    Answer:
+    """
 
     prompt = PromptTemplate(
         template=prompt_template,
