@@ -114,5 +114,5 @@ def ask_scheme_sathi(question):
         }
 
     except Exception as e:
-        print("RAG ERROR:", e)
+        print("RAG ERROR:", )
         return {"answer": "Error occurred."}
