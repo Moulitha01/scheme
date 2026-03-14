@@ -115,4 +115,4 @@ def ask_scheme_sathi(question):
 
     except Exception as e:
         print("RAG ERROR:", e)
-        return {"answer": "Error occurred. Check terminal."}
+        return {"answer": "Error occurred."}
