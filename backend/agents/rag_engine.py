@@ -39,7 +39,7 @@ def load_rag_pipeline():
     llm = Ollama(
         model="llama3.1",
         temperature=0.2,
-        num_predict=120
+        num_predict=100
     )
 
     # 5. Prompt template
