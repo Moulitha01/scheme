@@ -1,4 +1,4 @@
-import fitz
+import
 
 pdf = fitz.open("data/schemes/PM_Kisan_Scheme.pdf")
 
