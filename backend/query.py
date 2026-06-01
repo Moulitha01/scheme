@@ -6,7 +6,6 @@ from sentence_transformers import SentenceTransformer
 index = faiss.read_index("faiss_index/index.faiss")  # adjust path if needed
 
 # Load embeddings model
-model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Load the mapping of chunk IDs to text
 with open("faiss_index/doc_mapping.pkl", "rb") as f:
