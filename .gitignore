@@ -6,6 +6,6 @@ __pycache__/
 .env
 *.log
 faiss_index/
-backend/ta/
+backend/data/
 *.pkl
 *.pdf
